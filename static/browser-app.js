@@ -28,6 +28,8 @@ function k() {
         a("#" + b).setAttribute("aria-expanded", "false");
     }
     a("#preview").classList.remove("has-model");
+    a("#viewermount").replaceChildren();
+    a("#viewerstatus").textContent="";
     a("#qualitydetails").hidden = true;
     a("#modelwarning").style.display = "none";
 }
@@ -128,7 +130,19 @@ a("#help").onclick = a("#setuplink").onclick = () => {
     a("#setup").style.display = a("#setup").style.display === "block" ? "none" : "block";
 };
 
-a("#exposure").oninput = b => a("#model").setAttribute("exposure", b.target.value);
+a("#exposure").oninput = b => {let c=a("#model");if(c)c.setAttribute("exposure",b.target.value)};
+
+function ac(){
+    let b=a("#viewermount"), c=a("#viewermode").value;
+    b.replaceChildren();a("#viewerstatus").textContent="";
+    if(!e.glb)return;
+    if(c==="faoxom" && typeof FaoxomJs === "undefined"){a("#viewerstatus").textContent="FaoxomJS could not load. Keep static/faoxom.min.js with the site, or choose Native WebGL.";return}
+    let d=document.createElement(c==="faoxom"?"mesh-viewer":"native-viewer");d.id="model";d.setAttribute("exposure",a("#exposure").value);if(c==="wire")d.setAttribute("mode","wire");
+    d.addEventListener("error",b=>{a("#viewerstatus").textContent="Viewer error: "+(b.detail||"Could not display model")+". Try another viewer."});
+    d.addEventListener("load",()=>{a("#viewerstatus").textContent=""});b.appendChild(d);d.src=e.glb;
+}
+a("#viewermode").onchange=ac;
+if(typeof FaoxomJs === "undefined") a("#viewermode").value="native";
 
 a("#loadexample").onclick = async () => {
     try {
@@ -611,8 +625,8 @@ a("#generate").onclick = async () => {
         e.glb = await u(f);
         e.obj = x(f);
         e.js = w(f);
-        a("#model").src = j(e.glb);
         a("#preview").classList.add("has-model");
+        ac();
         for (let b of [ "glb", "obj", "js" ]) a("#" + b).disabled = false;
         a("#stage").textContent = "Complete · browser approximation";
         a("#progress").style.width = "100%";
