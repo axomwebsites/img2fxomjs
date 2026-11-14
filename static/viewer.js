@@ -33,14 +33,18 @@ class meshviewer extends HTMLElement {
       let k=j(i.attributes.POSITION),l=j(i.attributes.NORMAL),m=j(i.attributes.TEXCOORD_0),n=j(i.indices);if(!(k instanceof Float32Array)||!(l instanceof Float32Array)||!(m instanceof Float32Array))throw Error('Unsupported vertex format');
       let o=g.materials?.[i.material]?.pbrMetallicRoughness?.baseColorTexture?.index,p=g.textures?.[o]?.source,q=g.images?.[p],r=q&&g.bufferViews[q.bufferView];if(!r)throw Error('The model needs an embedded texture');let s=new Blob([h.slice(r.byteOffset||0,(r.byteOffset||0)+r.byteLength)],{type:q.mimeType||'image/png'}),t=await createImageBitmap(s);if(b!==this.token){t.close();return}
       this.clear();this.bitmap=t;let u=new FaoxomJs.Geometry();u.setAttribute('position',k,3);u.setAttribute('normal',l,3);u.setAttribute('uv',m,2);u.setIndex(n);
-      let v=new FaoxomJs.Texture(t,{flipY:false,wrapS:'clampToEdge',wrapT:'clampToEdge'}),w=new FaoxomJs.PhysicalMaterial({color:0xffffff,map:v,metalness:0,roughness:.9});this.mesh=new FaoxomJs.Mesh(u,w);this.scene.add(this.mesh);
+      let v=new FaoxomJs.Texture(t,{flipY:false,wrapS:'clamp',wrapT:'clamp'});
+      let w=new FaoxomJs.ShaderMaterial({side:'double',vertexShader:'varying vec3 direction; varying vec2 texcoord; void main(){direction=normal;texcoord=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',fragmentShader:'precision mediump float; varying vec3 direction; varying vec2 texcoord; uniform sampler2D texturemap; uniform float brightness; void main(){vec3 n=normalize(direction);float k=max(dot(n,normalize(vec3(0.5,0.75,1.0))),0.0);float f=max(dot(n,normalize(vec3(-0.7,0.25,-0.6))),0.0);vec4 t=texture2D(texturemap,texcoord);vec3 c=pow(max(t.rgb,vec3(0.0)),vec3(0.4545));gl_FragColor=vec4(clamp(c*(0.58+0.33*k+0.17*f)*brightness,0.0,1.0),t.a);}',uniforms:{texturemap:{value:v},brightness:{value:1}}});
+      this.mesh=new FaoxomJs.Mesh(u,w);this.scene.add(this.mesh);
       let x=g.accessors[i.attributes.POSITION],y=x.min,z=x.max;this.center=y.map((a,b)=>(a+z[b])/2);this.size=Math.max(...z.map((a,b)=>a-y[b]))||2;this.notice.textContent='Drag to rotate · scroll to zoom';this.draw();this.loaded=true;this.dispatchEvent(new Event('load'));
     }catch(c){if(b!==this.token)return;this.notice.textContent='Could not display model: '+c.message;this.dispatchEvent(new CustomEvent('error',{detail:c.message}))}
   }
   draw(){
     if(!this.renderer||!this.scene||!this.camera)return;let a=this.canvas.clientWidth,b=this.canvas.clientHeight;if(!a||!b)return;this.renderer.setSize(a,b);this.renderer.exposure=Math.max(.1,Number(this.getAttribute('exposure'))||1);this.camera.aspect=a/b;this.camera.updateProjectionMatrix();
     if(this.mesh){let c=this.center,d=this.size*this.zoom,e=this.angle,f=this.pitch;this.camera.position.set(c[0]+d*Math.sin(e)*Math.cos(f),c[1]+d*Math.sin(f),c[2]+d*Math.cos(e)*Math.cos(f));this.camera.lookAt(c[0],c[1],c[2])}
+    if(this.mesh)this.mesh.material.uniforms.brightness.value=Math.max(.1,Number(this.getAttribute('exposure'))||1);
     this.renderer.render(this.scene,this.camera);
+    if(this.mesh&&this.renderer.info.render.calls===0)throw Error('FaoxomJS could not draw the model on this device');
   }
 }
 customElements.define('mesh-viewer',meshviewer);
