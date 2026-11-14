@@ -1,3 +1,4 @@
+(function(){
 "use strict";
 
 const a = a => document.querySelector(a);
@@ -131,21 +132,42 @@ a("#exposure").oninput = b => a("#model").setAttribute("exposure", b.target.valu
 
 a("#loadexample").onclick = async () => {
     try {
-        let a = await Promise.all(Array.from({
-            length: 15
-        }, (a, b) => b + 1).filter(a => a !== 6).concat(16).map(async a => {
-            let b = `dinoSR${String(a).padStart(4, "0")}.png`, c = await fetch("/static/examples/dino/" + b);
-            if (!c.ok) throw Error("Example unavailable");
-            return new File([ await c.blob() ], b, {
-                type: "image/png"
-            });
-        }));
-        b = a;
-        c.clear();
+        a("#loadexample").disabled = true;
+        a("#alert").style.display = "none";
+        let d = [];
+        for (let e of ["front", "back", "left", "right"]) {
+            let f = document.createElement("canvas");
+            f.width = 640;
+            f.height = 800;
+            let g = f.getContext("2d");
+            g.fillStyle = "#f6f6f2";
+            g.fillRect(0, 0, 640, 800);
+            g.fillStyle = "#174e98";
+            g.beginPath();
+            g.roundRect(190, 75, 260, 650, 30);
+            g.fill();
+            g.fillStyle = "#cdd5da";
+            g.fillRect(195, 78, 250, 36);
+            g.fillRect(195, 687, 250, 32);
+            g.fillStyle = "#e8f2fb";
+            g.fillRect(190, 300, 260, 175);
+            g.fillStyle = "#224773";
+            g.textAlign = "center";
+            g.font = "bold 38px Arial";
+            g.fillText(e === "front" ? "SAMPLE" : e.toUpperCase(), 320, 370);
+            g.font = "24px Arial";
+            g.fillText("DEMO CAN", 320, 414);
+            let h = await new Promise((a, b) => f.toBlob(c => c ? a(c) : b(Error("Could not create example image")), "image/png"));
+            let i = new File([h], "example-" + e + ".png", {type:"image/png"});
+            d.push(i);
+            c.set(i, e);
+        }
+        b = d;
         l();
-        i("The dinosaur sample has a dark background and is intended for the Python calibrated mode. This clone only supports light-background, roughly round objects.");
-    } catch (a) {
-        i(a.message);
+    } catch (b) {
+        i(b.message);
+    } finally {
+        a("#loadexample").disabled = false;
     }
 };
 
@@ -425,9 +447,9 @@ function x(a) {
 }
 
 async function y(a) {
-    let b = await fetch("/static/faoxom.min.js");
-    if (!b.ok) throw Error("FaoxomJS library unavailable");
-    let c = await b.blob();
+    let b = document.querySelector("#faoxomsource"), c;
+    if (b && b.textContent.trim()) c = new Blob([b.textContent], {type:"text/javascript"});
+    else { let d = await fetch("static/faoxom.min.js"); if (!d.ok) throw Error("FaoxomJS library unavailable"); c = await d.blob(); }
     let d = await new Promise((a, b) => {
         let d = new FileReader;
         d.onload = () => a(d.result.split(",")[1]);
@@ -540,3 +562,5 @@ a("#generate").onclick = async () => {
 };
 
 l();
+
+})();
