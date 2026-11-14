@@ -135,6 +135,7 @@ a("#loadexample").onclick = async () => {
         a("#loadexample").disabled = true;
         a("#alert").style.display = "none";
         let d = [];
+        c.clear();
         for (let e of ["front", "back", "left", "right"]) {
             let f = document.createElement("canvas");
             f.width = 640;
@@ -149,7 +150,7 @@ a("#loadexample").onclick = async () => {
             g.fillStyle = "#cdd5da";
             g.fillRect(195, 78, 250, 36);
             g.fillRect(195, 687, 250, 32);
-            g.fillStyle = "#e8f2fb";
+            g.fillStyle = "#bacde1";
             g.fillRect(190, 300, 260, 175);
             g.fillStyle = "#224773";
             g.textAlign = "center";
@@ -171,7 +172,7 @@ a("#loadexample").onclick = async () => {
     }
 };
 
-async function o(a) {
+async function o(a, ab) {
     let b = await createImageBitmap(a), d = 1024, e = Math.min(1, d / Math.max(b.width, b.height));
     let f = document.createElement("canvas");
     f.width = Math.max(1, Math.round(b.width * e));
@@ -190,7 +191,7 @@ async function o(a) {
     let n = new Uint8Array(j * k), o = j, p = k, q = 0, r = 0, s = 0;
     for (let a = 0; a < k; a++) for (let b = 0; b < j; b++) {
         let c = a * j + b, d = c * 4, e = Math.hypot(i[d] - m[0], i[d + 1] - m[1], i[d + 2] - m[2]);
-        if (i[d + 3] > 16 && e > 42) {
+        if (i[d + 3] > 16 && e > ab) {
             n[c] = 1;
             o = Math.min(o, b);
             q = Math.max(q, b);
@@ -198,6 +199,11 @@ async function o(a) {
             r = Math.max(r, a);
             s++;
         }
+    }
+    for (let t = p; t <= r; t++) {
+        let u = j, v = -1;
+        for (let w = o; w <= q; w++) if (n[t*j+w]) {u=Math.min(u,w);v=Math.max(v,w)}
+        if(v>=u) n.fill(1,t*j+u,t*j+v+1);
     }
     if (s < 50 || r - p < 10 || q - o < 5) throw Error("Could not isolate " + a.name + ". Use a clear object on a contrasting plain background.");
     return {
@@ -236,15 +242,15 @@ function r(a, b, c) {
     return [ Math.min(a.w - 1, Math.max(0, Math.floor(d + b * (f - 1)))), Math.min(a.h - 1, Math.max(0, Math.floor(e + c * (g - 1)))) ];
 }
 
-async function s(a, b) {
+async function s(a, b, aa, ab, ac) {
     let c = a.filter(a => ![ "top", "bottom" ].includes(a.side));
     if (!c.length) throw Error("Add at least one side photo.");
     let d = p(c.filter(a => a.side === "front")) || p(c), e = {};
     for (let b of [ "front", "back", "left", "right", "top", "bottom" ]) e[b] = p(a.filter(a => a.side === b));
     e.front = e.front || d;
-    let f = c.map(a => q(a, 128));
+    let f = c.map(a => q(a, aa));
     let g = Array.from({
-        length: 129
+        length: aa + 1
     }, (a, b) => {
         let c = f.map(a => a[b]).sort((a, b) => a - b);
         return c[Math.floor(c.length / 2)];
@@ -270,7 +276,7 @@ async function s(a, b) {
     }
     i.putImageData(j, 0, 0);
     let l = await new Promise(a => h.toBlob(a, "image/png"));
-    const m = 128, n = 128, o = [], s = [], t = [], u = [];
+    const m = aa, n = aa, o = [], s = [], t = [], u = [];
     function v(a, b, c, d, e) {
         o.push(a, b, c);
         s.push(d, e);
@@ -278,6 +284,39 @@ async function s(a, b) {
         u.push(k[h] / 255, k[h + 1] / 255, k[h + 2] / 255);
         return o.length / 3 - 1;
     }
+    if (ab === "voxel") {
+        let ad = c.filter(a => ["front", "back", "left", "right"].includes(a.side));
+        if (!ad.length) ad = [d];
+        let ae = Math.max(...g) * 1.02, af = aa, ag = new Uint8Array(af * af * af);
+        let ah = Math.min(ac, ad.length - 1), ai = (a,b,c) => (a*af+b)*af+c;
+        for(let aj=0;aj<af;aj++) for(let ak=0;ak<af;ak++) for(let al=0;al<af;al++) {
+            let am=(ak+.5)/af*2-1, an=(al+.5)/af*2-1, ao=(aj+.5)/af, ap=0;
+            for(let aq of ad){
+                let ar=aq.side==="back"?-am:aq.side==="left"?an:aq.side==="right"?-an:am;
+                let [as,at]=r(aq,(ar+1)/2,ao); if(!aq.mask[at*aq.w+as])ap++;
+            }
+            if(ap<=ah)ag[ai(aj,ak,al)]=1;
+        }
+        let aj=(a,b,c)=>a>=0&&b>=0&&c>=0&&a<af&&b<af&&c<af&&ag[ai(a,b,c)];
+        let ak=(a,b,c,d)=>{
+            let e=o.length/3;
+            for(let f of a){let [h,i,j]=f, k=Math.atan2(h,j), l=(k+Math.PI)/(2*Math.PI), m=(1-i)/2*.749;
+                if(d===1||d===-1){let n=ae||1;l=(d===1?0:.5)+(.25+.245*h/n)*.5;m=.875+.12*j/n}
+                v(h,i,j,l,m);
+            }
+            t.push(e,e+1,e+2,e,e+2,e+3);
+        };
+        for(let al=0;al<af;al++) for(let am=0;am<af;am++) for(let an=0;an<af;an++) if(aj(al,am,an)) {
+            let ao=(am/af*2-1)*ae,ap=((am+1)/af*2-1)*ae,aq=1-al/af*2,ar=1-(al+1)/af*2,as=(an/af*2-1)*ae,at=((an+1)/af*2-1)*ae;
+            if(!aj(al,am,an+1))ak([[ao,ar,at],[ap,ar,at],[ap,aq,at],[ao,aq,at]],0,0,0);
+            if(!aj(al,am,an-1))ak([[ap,ar,as],[ao,ar,as],[ao,aq,as],[ap,aq,as]],0,0,0);
+            if(!aj(al,am+1,an))ak([[ap,ar,at],[ap,ar,as],[ap,aq,as],[ap,aq,at]],0,0,0);
+            if(!aj(al,am-1,an))ak([[ao,ar,as],[ao,ar,at],[ao,aq,at],[ao,aq,as]],0,0,0);
+            if(!aj(al-1,am,an))ak([[ao,aq,at],[ap,aq,at],[ap,aq,as],[ao,aq,as]],0,0,1);
+            if(!aj(al+1,am,an))ak([[ao,ar,as],[ap,ar,as],[ap,ar,at],[ao,ar,at]],0,0,-1);
+        }
+        if(!t.length)throw Error("Silhouettes produced an empty voxel model. Check labels or increase tolerance.");
+    } else {
     for (let a = 0; a <= n; a++) for (let b = 0; b <= m; b++) {
         let c = b / m * 2 * Math.PI - Math.PI, d = g[a], e = 1 - 2 * a / n;
         v(d * Math.sin(c), e, d * Math.cos(c), b / m, a / n * .749);
@@ -297,6 +336,7 @@ async function s(a, b) {
             let e = d + b * (m + 1) + c, f = e + m + 1;
             if (a) t.push(e, f, e + 1, e + 1, f, f + 1); else t.push(e, e + 1, f, e + 1, f + 1, f);
         }
+    }
     }
     let w = new Float32Array(o.length);
     for (let a = 0; a < t.length; a += 3) {
@@ -520,22 +560,51 @@ a("#jsformat").onchange = () => {
     }
 };
 
+function ab(){
+    let b=a("#setupmode").value==="voxel";
+    a("#tolerance").disabled=!b;
+    a("#modeinfo").textContent=b?"Assumed orthographic cameras from side labels. This is voxel carving, not calibrated camera estimation.":"Rotational fallback; camera poses are not estimated.";
+}
+a("#setupmode").onchange=ab;
+ab();
+
+async function aa(a) {
+    let b = document.querySelector("#ocrresult"), c = [];
+    b.hidden = false;
+    if(typeof OCRAD !== "function") { b.textContent="OCR could not load. Keep static/ocrad.js beside this page."; return; }
+    for(let d of a) {
+        b.textContent = "Reading " + d.f.name + "…";
+        await new Promise(a=>setTimeout(a,20));
+        try {
+            let e=document.createElement("canvas"), f=d.box, g=Math.min(2,1600/Math.max(f[2],f[3]));
+            e.width=Math.max(1,Math.round(f[2]*g));e.height=Math.max(1,Math.round(f[3]*g));
+            let h=e.getContext("2d",{willReadFrequently:true});h.fillStyle="#fff";h.fillRect(0,0,e.width,e.height);h.drawImage(d.c,f[0],f[1],f[2],f[3],0,0,e.width,e.height);
+            let i=h.getImageData(0,0,e.width,e.height);
+            for(let j=0;j<i.data.length;j+=4){let k=.299*i.data[j]+.587*i.data[j+1]+.114*i.data[j+2],l=Math.max(0,Math.min(255,(k-128)*1.25+128));i.data[j]=i.data[j+1]=i.data[j+2]=l;}h.putImageData(i,0,0);
+            let j=OCRAD(e); c.push(d.f.name+":\n"+(j.trim()||"No text detected."));
+        } catch(e){ c.push(d.f.name+": OCR failed: "+e.message); }
+    }
+    b.textContent="UNVERIFIED OCR — classical OCRAD; small or curved text may be wrong. Text is not added to the model.\n\n"+c.join("\n\n");
+}
+
 a("#generate").onclick = async () => {
     f = true;
     l();
     k();
     a("#alert").style.display = "none";
+    a("#ocrresult").hidden = true;
     a("#stage").textContent = "Reading photos…";
     a("#progress").style.width = "10%";
     a("#percent").textContent = "10%";
     try {
         await new Promise(a => setTimeout(a, 30));
         let c = [];
-        for (let a of b) c.push(await o(a));
+        let h = Math.max(0, Math.min(255, Number(a("#threshold").value) || 0));
+        for (let a of b) c.push(await o(a, h));
         a("#stage").textContent = "Building browser approximation…";
         a("#progress").style.width = "35%";
         await new Promise(a => setTimeout(a, 30));
-        let d = Math.max(0, Math.min(.4, Number(a("#bottomrecess").value) || 0)), f = await s(c, d);
+        let d = Math.max(0, Math.min(.4, Number(a("#bottomrecess").value) || 0)), f = await s(c, d, Number(a("#resolution").value), a("#setupmode").value, Number(a("#tolerance").value));
         a("#stage").textContent = "Creating exports…";
         a("#progress").style.width = "75%";
         await new Promise(a => setTimeout(a, 30));
@@ -549,8 +618,9 @@ a("#generate").onclick = async () => {
         a("#progress").style.width = "100%";
         a("#percent").textContent = "100%";
         a("#statusdesc").textContent = `${f.views} side views · ${f.pos.length / 3} vertices · ${f.idx.length / 3} faces`;
-        a("#modelwarning").textContent = "This JavaScript clone produces a symmetric approximation, not a calibrated 3D scan. Camera setup, OCR, same-side alignment, and image comparison are not yet implemented. Unseen sides are estimated; scale is arbitrary.";
+        a("#modelwarning").textContent = a("#setupmode").value === "voxel" ? "Voxel carving uses assumed orthographic side directions from labels, not estimated camera calibration. Unseen surfaces and scale are approximate. Bottom recess is not applied in voxel mode." : "This rotational model is an approximation, not a calibrated scan. Unseen sides and scale are estimated. Same-side alignment and image comparison are not implemented.";
         a("#modelwarning").style.display = "block";
+        if(a("#enableocr").checked){a("#stage").textContent="Reading text…";await aa(c);a("#stage").textContent="Complete · browser approximation";}
     } catch (b) {
         a("#stage").textContent = "Could not reconstruct";
         a("#progress").style.width = "0%";
