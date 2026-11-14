@@ -25,7 +25,7 @@ class meshviewer extends HTMLElement {
     let b=++this.token;this.loaded=false;this.notice.textContent='Loading model…';
     try{
       if(!this.renderer||!this.renderer.gl)throw Error('FaoxomJS WebGL is unavailable');
-      let c=await fetch(a);if(!c.ok)throw Error('Could not read the model');let d=await c.arrayBuffer();if(b!==this.token)return;
+      let d;if(a instanceof Blob)d=await a.arrayBuffer();else{let c=await fetch(a);if(!c.ok)throw Error('Could not read the model');d=await c.arrayBuffer()}if(b!==this.token)return;
       let e=new DataView(d);if(e.getUint32(0,true)!==0x46546c67||e.getUint32(4,true)!==2)throw Error('This viewer requires a GLB 2.0 file');
       let f=12,g=null,h=null;while(f+8<=d.byteLength){let i=e.getUint32(f,true),j=e.getUint32(f+4,true);if(f+8+i>d.byteLength)throw Error('Invalid GLB chunk');if(j===0x4e4f534a)g=JSON.parse(new TextDecoder().decode(new Uint8Array(d,f+8,i)));if(j===0x004e4942)h=new Uint8Array(d,f+8,i);f+=8+i}
       if(!g||!h)throw Error('Missing GLB data');let i=g.meshes?.[0]?.primitives?.[0];if(!i||i.mode!==undefined&&i.mode!==4)throw Error('Only triangle meshes are supported');
